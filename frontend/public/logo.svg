@@ -1,0 +1,16 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  
+  <!-- Background Circle -->
+  <circle cx="100" cy="100" r="90" fill="#1f2937"/>
+
+  <!-- Code Brackets -->
+  <text x="55" y="120" font-size="70" fill="#60a5fa" font-family="monospace">&lt;</text>
+  <text x="120" y="120" font-size="70" fill="#a78bfa" font-family="monospace">&gt;</text>
+
+  <!-- Lightning Bolt -->
+  <polygon 
+    points="100,55 85,105 105,105 90,145 125,90 105,90"
+    fill="#facc15"
+  />
+
+</svg>
