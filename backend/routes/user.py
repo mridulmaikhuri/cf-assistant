@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta
 import requests
 
 BASE_CF_API = "https://codeforces.com/api"
@@ -20,7 +20,6 @@ def fetch_cf_api(url: str):
     
     if data.get("status") != "OK":
         raise HTTPException(status_code=404, detail=data.get("comment", "Codeforces API error"))
-    
     return data
 
 @router.get('/info/{handle}')
@@ -38,16 +37,66 @@ def get_user(handle: str):
     }
 
 @router.get('/submission/{handle}')
-def get_submission_history(handle: str):
+def get_submission_history(handle: str, days:int = 365):
     url = f"{BASE_CF_API}/user.status?handle={handle}"
     response = fetch_cf_api(url)
+    
     submissions = response.get("result", [])
     daily_submission = defaultdict(int)
+    one_year_ago = datetime.now() - timedelta(days=days)
+    cutoff_timestamp = int(one_year_ago.timestamp())
+    
     for submission in submissions:
         timestamp = submission["creationTimeSeconds"]
+        if (timestamp < cutoff_timestamp):
+            break
         date = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d")
         daily_submission[date] += 1
-    return [
-        {"date": date, "count": count}
-        for date, count in daily_submission.items()
-    ]
+    
+    dates = sorted(daily_submission.keys())
+    counts = [daily_submission[date] for date in dates]
+    if not counts:
+        return {
+            "heatmap": [],
+            "stats": {
+                "max_submission": 0,
+                "min_submission": 0,
+                "avg_submission": 0,
+                "max_streak": 0,
+                "current_streak": 0
+            }
+        }
+    
+    max_submission = max(counts)
+    min_submission = 0 if len(counts) < days else min(counts)
+    avg_submission = round(sum(counts) / days, 2)
+    
+    max_streak = 0
+    cur_streak = 0
+    prev_date = None
+    for date in dates:
+        cur_date = datetime.strptime(date, "%Y-%m-%d")
+        if prev_date and cur_date - prev_date == timedelta(days=1):
+            cur_streak += 1
+        else:
+            cur_streak = 1
+        max_streak = max(max_streak, cur_streak)
+        prev_date = cur_date
+    last_date = datetime.strptime(dates[-1], "%Y-%m-%d").date()
+    today = datetime.now().date()
+    if (today - last_date).days > 1:
+        cur_streak = 0
+    
+    return {
+        "heatmap": [
+            {"date": date, "count": count}
+            for date, count in daily_submission.items()
+        ],
+        "stats": {
+            "max_submission": max_submission,
+            "min_submission": min_submission,
+            "avg_submission": avg_submission,
+            "max_streak": max_streak,
+            "current_streak": cur_streak
+        }
+    }

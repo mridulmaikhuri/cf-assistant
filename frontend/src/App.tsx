@@ -5,15 +5,30 @@ import Navbar from "./components/Navbar";
 import UserCard from "./components/UserCard";
 import SubmissionsHeatmap from "./components/SubmissionHeatmap";
 
-function App() { 
-  const [data, setData] = useState<{ 
+type UserData = {
     handle: string,
     profilePhoto: string,
     rating: number,
     rank: string,
     maxRating: number,
     maxRank: string,
-  }>({ 
+}
+
+type HeatmapData = {
+    date: string;
+    count: number;
+}
+
+type Stats = {
+  max_submission: number;
+  min_submission: number;
+  avg_submission: number;
+  max_streak: number;
+  current_streak: number;
+};
+
+function App() { 
+  const [data, setData] = useState<UserData>({ 
     handle: "",
     profilePhoto: "",
     rating: 0,
@@ -21,8 +36,14 @@ function App() {
     maxRating: 0,
     maxRank: ""
   });
-
-  const [heatmap, setHeatmap] = useState([]);
+  const [heatmap, setHeatmap] = useState<HeatmapData[]>([]);
+  const [stats, setStats] = useState<Stats>({
+    max_submission: 0,
+    min_submission: 0,
+    avg_submission: 0,
+    max_streak: 0,
+    current_streak: 0
+  });
 
   useEffect(
     () => {
@@ -37,7 +58,10 @@ function App() {
     () => {
       fetch(`${API_BASE_URL}/user/submission/${USER_HANDLE}`)
       .then(res => res.json())
-      .then(data => setHeatmap(data))
+      .then(data => {
+        setHeatmap(data.heatmap);
+        setStats(data.stats);
+      })
     },
     []
   )
@@ -59,6 +83,7 @@ function App() {
         <div className="w-3/4">
           <SubmissionsHeatmap 
             data={heatmap} 
+            stats={stats}
           />
         </div>
       </div>

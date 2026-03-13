@@ -16,7 +16,7 @@ const UserCard = ({
     maxRank
 }: UserCardProps) => {
     return (
-        <div className="bg-gray-800 rounded-2xl shadow-xl p-8 w-105">
+        <div className="bg-gray-800 rounded-2xl shadow-xl p-8 w-105 h-110">
 
             {/* Profile Section */}
             <div className="flex flex-col items-center mb-6">
