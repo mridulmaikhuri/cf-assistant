@@ -60,7 +60,6 @@ def get_submission_history(handle: str, days:int = 365):
             "heatmap": [],
             "stats": {
                 "max_submission": 0,
-                "min_submission": 0,
                 "avg_submission": 0,
                 "max_streak": 0,
                 "current_streak": 0
@@ -68,7 +67,6 @@ def get_submission_history(handle: str, days:int = 365):
         }
     
     max_submission = max(counts)
-    min_submission = 0 if len(counts) < days else min(counts)
     avg_submission = round(sum(counts) / days, 2)
     
     max_streak = 0
@@ -94,9 +92,46 @@ def get_submission_history(handle: str, days:int = 365):
         ],
         "stats": {
             "max_submission": max_submission,
-            "min_submission": min_submission,
             "avg_submission": avg_submission,
             "max_streak": max_streak,
             "current_streak": cur_streak
         }
+    }
+    
+@router.get('/rating/{handle}')
+def get_rating_history(handle: str):
+    url = f"{BASE_CF_API}/user.rating?handle={handle}"
+    response = fetch_cf_api(url)
+    
+    result = response.get("result", [])
+    if not result:
+        return {
+            "rating_history": [],
+            "max_delta": 0,
+            "avg_delta": 0,
+            "total_contest": 0
+        }
+    
+    rating_history = []
+    max_delta = -1e9
+    avg_delta = 0
+    total_contest = len(result)
+    for res in result:
+        delta = res["newRating"] - res["oldRating"]
+        max_delta = max(max_delta, delta)
+        avg_delta += delta
+        rating_history.append({
+            "contestId": res["contestId"],
+            "contestName": res["contestName"],
+            "rank": res["rank"],
+            "oldRating": res["oldRating"],
+            "newRating": res["newRating"]
+        })
+    avg_delta = round(avg_delta/len(result), 2)
+    
+    return {
+        "rating_history": rating_history,
+        "max_delta": max_delta,
+        "avg_delta": avg_delta,
+        "total_contest": total_contest
     }

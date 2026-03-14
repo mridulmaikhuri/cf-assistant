@@ -1,37 +1,23 @@
-interface UserCardProps {
-    profilePhoto: string;
-    handle: string;
-    rank: string;
-    rating: number;
-    maxRating: number;
-    maxRank: string;
-}
+import type { UserData } from "../constants/config";
 
-const UserCard = ({
-    profilePhoto,
-    handle,
-    rank,
-    rating,
-    maxRating,
-    maxRank
-}: UserCardProps) => {
+const UserCard = ({ data } : { data : UserData}) => {
     return (
         <div className="bg-gray-800 rounded-2xl shadow-xl p-8 w-105 h-110">
 
             {/* Profile Section */}
             <div className="flex flex-col items-center mb-6">
                 <img
-                    src={profilePhoto}
+                    src={data.profilePhoto}
                     alt="Profile"
                     className="w-28 h-28 rounded-full border-4 border-gray-600 mb-4"
                 />
 
                 <h2 className="text-2xl font-semibold text-white">
-                    {handle}
+                    {data.handle}
                 </h2>
 
                 <p className="text-gray-400 capitalize">
-                    {rank}
+                    {data.rank}
                 </p>
             </div>
 
@@ -41,21 +27,21 @@ const UserCard = ({
                 <div className="bg-gray-700 rounded-lg p-4">
                     <p className="text-gray-400 text-sm">Rating</p>
                     <p className="text-white text-xl font-medium">
-                        {rating}
+                        {data.rating}
                     </p>
                 </div>
 
                 <div className="bg-gray-700 rounded-lg p-4">
                     <p className="text-gray-400 text-sm">Max Rating</p>
                     <p className="text-white text-xl font-medium">
-                        {maxRating}
+                        {data.maxRating}
                     </p>
                 </div>
 
                 <div className="bg-gray-700 rounded-lg p-4 col-span-2">
                     <p className="text-gray-400 text-sm">Max Rank</p>
                     <p className="text-white text-lg font-medium capitalize">
-                        {maxRank}
+                        {data.maxRank}
                     </p>
                 </div>
 
