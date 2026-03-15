@@ -1,29 +1,29 @@
+import { Link } from "react-router-dom";
+
 const Navbar = () => {
   return (
     <nav className="bg-gray-700 text-white px-8 py-4 flex items-center justify-center border-white opacity-80">
-      {/* Nav Links */}
       <div className="flex space-x-8 text-lg font-medium justify-center items-center">
-        <a href="/" className="hover:text-blue-400 hover:scale-110 transition">
+        <Link to="/" className="hover:text-blue-400 hover:scale-110 transition">
           Home
-        </a>
+        </Link>
 
-        <a href="/problems" className="hover:text-blue-400 hover:scale-110 transition">
+        <Link to="/problems" className="hover:text-blue-400 hover:scale-110 transition">
           Problems
-        </a>
+        </Link>
 
-        <a href="/training" className="hover:text-blue-400 hover:scale-110 transition">
+        <Link to="/training" className="hover:text-blue-400 hover:scale-110 transition">
           Training
-        </a>
+        </Link>
 
-        <a href="/contest" className="hover:text-blue-400 hover:scale-110 transition">
+        <Link to="/contest" className="hover:text-blue-400 hover:scale-110 transition">
           Contest
-        </a>
+        </Link>
 
-        <a href="/code-analyzer" className="hover:text-blue-400 hover:scale-110 transition">
+        <Link to="/code-analyzer" className="hover:text-blue-400 hover:scale-110 transition">
           Code Analyzer
-        </a>
+        </Link>
       </div>
-
     </nav>
   );
 };
