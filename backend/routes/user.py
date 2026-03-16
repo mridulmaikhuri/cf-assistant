@@ -135,3 +135,114 @@ def get_rating_history(handle: str):
         "avg_delta": avg_delta,
         "total_contest": total_contest
     }
+
+def fetch_user_submissions(handle: str):
+    url = f'{BASE_CF_API}/user.status?handle={handle}'
+    res = fetch_cf_api(url)
+    return res["result"]
+
+def fetch_problemset():
+    url = f'{BASE_CF_API}/problemset.problems'
+    res = fetch_cf_api(url)
+    return res["result"]["problems"]
+    
+@router.get('/problems/{handle}')
+def get_recommended_problems(handle: str):
+    user = get_user(handle)
+    rating = user.get("rating", 800)
+    
+    submissions = fetch_user_submissions(handle)
+    all_problems = fetch_problemset()
+    
+    attempted_tags = defaultdict(int)
+    solved_tags = defaultdict(int)
+    solved_problems = set()
+    attempted_problems = set()
+    
+    for sub in submissions:
+        prob = sub.get("problem", {})
+        contest_id = prob.get("contestId")
+        index = prob.get("index")
+        
+        if contest_id is None or index is None:
+            continue
+        
+        problem_key = (contest_id, index)
+        attempted_problems.add(problem_key)
+        
+        tags = prob.get("tags", [])
+        for tag in tags:
+            attempted_tags[tag] += 1
+        
+        if sub.get("verdict") == "OK":
+            solved_problems.add(problem_key)
+            for tag in tags:
+                solved_tags[tag] += 1
+                
+    tag_weakness = {}
+    all_tags = set(attempted_tags.keys()) | set(
+        tag for p in all_problems for tag in p.get("tags", [])
+    )
+    
+    for tag in all_tags:
+        attempted = attempted_tags[tag]
+        solved = solved_tags[tag]
+        success_rate = solved / attempted if attempted > 0 else 0
+        weakness = 1 - success_rate
+        tag_weakness[tag] = weakness
+        
+    min_rating = rating - 200
+    max_rating = rating + 200
+    
+    min_rating = (min_rating // 100) * 100
+    max_rating = ((max_rating + 99) // 100) * 100
+    
+    candidates = []
+    for prob in all_problems:
+        prob_rating = prob.get("rating")
+        
+        if (prob_rating is None):
+            continue
+        
+        if not (min_rating <= prob_rating <= max_rating):
+            continue
+        
+        contest_id = prob.get("contestId")
+        index = prob.get("index")
+        name = prob.get("name")
+        tags = prob.get("tags", [])
+        
+        if (contest_id is None or index is None):
+            continue
+        
+        problem_key = (contest_id, index)
+        
+        if problem_key in solved_problems:
+            continue
+        
+        if not tags:
+            continue
+        
+        avg_weakness = sum(tag_weakness.get(tag, 1) for tag in tags) / len(tags)
+        unseen_bonus = 0.15 if problem_key not in attempted_problems else 0
+        
+        rating_bonus = 1 - abs(prob_rating - rating) / 200
+        rating_bonus *= 0.1
+        
+        score = avg_weakness + unseen_bonus + rating_bonus
+        
+        candidates.append({
+            "contestId": contest_id,
+            "index": index,
+            "name": name,
+            "rating": prob_rating,
+            "tags": tags,
+            "score": round(score, 4),
+            "link": f"https://codeforces.com/problemset/problem/{contest_id}/{index}"
+        })
+    
+    candidates.sort(key=lambda x : (-x["score"], abs(x["rating"] - rating)))
+    
+    return {
+        "recommendedProblems": candidates
+    }
