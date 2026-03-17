@@ -1,7 +1,8 @@
+import requests
 from fastapi import APIRouter, HTTPException
 from collections import defaultdict
 from datetime import datetime, timedelta
-import requests
+from cachetools import TTLCache
 
 BASE_CF_API = "https://codeforces.com/api"
 
@@ -136,24 +137,43 @@ def get_rating_history(handle: str):
         "total_contest": total_contest
     }
 
+submission_cache = TTLCache(maxsize=200, ttl=3599) # cache user submission for 1 hr
 def fetch_user_submissions(handle: str):
-    url = f'{BASE_CF_API}/user.status?handle={handle}'
-    res = fetch_cf_api(url)
-    return res["result"]
+    if handle not in submission_cache:
+        url = f'{BASE_CF_API}/user.status?handle={handle}'
+        res = fetch_cf_api(url)
+        submission_cache[handle] = res["result"]
+    return submission_cache[handle]
 
-def fetch_problemset():
-    url = f'{BASE_CF_API}/problemset.problems'
-    res = fetch_cf_api(url)
-    return res["result"]["problems"]
+problemset_cache = TTLCache(maxsize=1, ttl=2*86399) # cache problemset data for 2 days
+def fetch_problemset_and_tags():
+    if "data" not in problemset_cache:
+        url = f'{BASE_CF_API}/problemset.problems'
+        res = fetch_cf_api(url)
+        problems = res["result"]["problems"]
+        tags = set(tag for prob in problems for tag in prob.get("tags", []))
+        
+        problemset_cache["data"] = {
+            "problems": problems,
+            "tags": tags
+        }
     
+    return problemset_cache["data"]
+
+recommendation_cache = TTLCache(maxsize=200, ttl=86400)
 @router.get('/problems/{handle}')
 def get_recommended_problems(handle: str):
-    user = get_user(handle)
-    rating = user.get("rating", 800)
+    if handle in recommendation_cache:
+        return recommendation_cache[handle]
+    # Fetch necessary Info
+    rating = get_user(handle).get("rating", 800)
+    submissions = fetch_user_submissions(handle) # can be cached
+    data = fetch_problemset_and_tags()
+    all_problems = data["problems"]
+    all_tags = data["tags"]
     
-    submissions = fetch_user_submissions(handle)
-    all_problems = fetch_problemset()
-    
+    # Logic
+    # 1) get list of attempted tags, solved tags, solved problems and attempted problems from submissions list
     attempted_tags = defaultdict(int)
     solved_tags = defaultdict(int)
     solved_problems = set()
@@ -178,11 +198,9 @@ def get_recommended_problems(handle: str):
             solved_problems.add(problem_key)
             for tag in tags:
                 solved_tags[tag] += 1
-                
+    
+    # 2) get weakness score associated with each tag        
     tag_weakness = {}
-    all_tags = set(attempted_tags.keys()) | set(
-        tag for p in all_problems for tag in p.get("tags", [])
-    )
     
     for tag in all_tags:
         attempted = attempted_tags[tag]
@@ -190,10 +208,10 @@ def get_recommended_problems(handle: str):
         success_rate = solved / attempted if attempted > 0 else 0
         weakness = 1 - success_rate
         tag_weakness[tag] = weakness
-        
+    
+    # 3) Get list of unsolved problems sorted according to relevance
     min_rating = rating - 200
     max_rating = rating + 200
-    
     min_rating = (min_rating // 100) * 100
     max_rating = ((max_rating + 99) // 100) * 100
     
@@ -243,6 +261,8 @@ def get_recommended_problems(handle: str):
     
     candidates.sort(key=lambda x : (-x["score"], abs(x["rating"] - rating)))
     
-    return {
+    recommendation_cache[handle] = {
         "recommendedProblems": candidates
     }
+    
+    return recommendation_cache[handle]

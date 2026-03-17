@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 
 import type { Problem } from "../constants/config";
 import { API_BASE_URL, USER_HANDLE } from "../constants/config";
-import { Link } from "react-router-dom";
 
 function Problems() {
     const [problems, setProblems] = useState<Problem[]>([]);
@@ -48,7 +47,7 @@ function Problems() {
     }
 
     return (
-        <div className="bg-gray-900 rounded-xl p-6 shadow-lg">
+        <div className="bg-gray-700 rounded-xl p-6 shadow-lg">
             <h2 className="text-2xl font-bold text-white mb-4">
                 Recommended Problems
             </h2>
