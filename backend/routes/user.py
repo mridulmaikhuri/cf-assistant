@@ -296,8 +296,6 @@ def get_candidates(rating, all_problems, solved_problems, tag_weakness, attempte
         
         candidate["score"] -= penalty
         
-        diverse_candidates.append(candidate)
-        
         for tag in candidate["tags"]:
             tag_counter[tag] += 1
     
