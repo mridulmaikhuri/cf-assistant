@@ -1,61 +1,5 @@
-import requests
-from fastapi import APIRouter, HTTPException
 from collections import defaultdict
-from cachetools import TTLCache
 from math import sqrt
-
-BASE_CF_API = "https://codeforces.com/api"
-
-router = APIRouter()
-
-def fetch_cf_api(url: str):
-    try:
-        res = requests.get(url, timeout=10)
-    except requests.exceptions.RequestException:
-        raise HTTPException(status_code=500, detail="Failed to connect to CF API")
-    
-    try:
-        data = res.json()
-    except ValueError:
-        raise HTTPException(status_code=500, detail="Invalid response from CF API")
-    
-    if data.get("status") != "OK":
-        raise HTTPException(status_code=404, detail=data.get("comment", "Codeforces API error"))
-    return data
-
-def get_user_rating(handle: str):
-    url = f"{BASE_CF_API}/user.info?handles={handle}"
-    response = fetch_cf_api(url)
-    return response["result"][0].get("rating", 800)
-
-submission_cache = TTLCache(maxsize=200, ttl=3599) # cache user submission for 1 hr
-def fetch_user_submissions(handle: str):
-    if handle not in submission_cache:
-        url = f'{BASE_CF_API}/user.status?handle={handle}'
-        res = fetch_cf_api(url)
-        submission_cache[handle] = res["result"]
-    return submission_cache[handle]
-
-problemset_cache = TTLCache(maxsize=1, ttl=2*86399) # cache problemset data for 2 days
-def fetch_problemset_and_tags():
-    if "data" not in problemset_cache:
-        url = f'{BASE_CF_API}/problemset.problems'
-        res = fetch_cf_api(url)
-        data = res["result"]["problems"]
-        
-        tags = set(tag for prob in data for tag in prob.get("tags", []))
-        problems = defaultdict(list)
-        
-        for prob in data:
-            if "rating" in prob:
-                problems[prob["rating"]].append(prob)
-        
-        problemset_cache["data"] = {
-            "problems": problems,
-            "tags": tags
-        }
-    
-    return problemset_cache["data"]
 
 def parse_submission(submissions):
     attempted_tags = defaultdict(int)
@@ -191,38 +135,4 @@ def get_candidates(rating, all_problems, solved_problems, tag_weakness, attempte
     
     candidates.sort(key=lambda x : (-x["score"], abs(x["rating"] - rating)))
     
-    return candidates
-    
-recommendation_cache = TTLCache(maxsize=200, ttl=86400)
-@router.get('/problems/{handle}')
-def get_recommended_problems(handle: str):
-    if handle in recommendation_cache:
-        return recommendation_cache[handle]
-    
-    # Fetch necessary Info
-    rating = get_user_rating(handle)
-    submissions = fetch_user_submissions(handle) 
-    data = fetch_problemset_and_tags()
-    all_problems = data["problems"]
-    all_tags = data["tags"]
-    
-    # Logic
-    
-    # 1) get list of attempted tags, solved tags, solved problems and attempted problems from submissions list
-    submission_data = parse_submission(submissions)
-    attempted_tags = submission_data["attempted_tags"]
-    solved_tags = submission_data["solved_tags"]
-    solved_problems = submission_data["solved_problems"]
-    attempted_problems = submission_data["attempted_problems"]
-    
-    # 2) get weakness score associated with each tag        
-    tag_weakness = get_tag_weakness(all_tags, attempted_tags, solved_tags)
-    
-    # 3) Get list of unsolved problems sorted according to relevance
-    candidates = get_candidates(rating, all_problems, solved_problems, tag_weakness, attempted_problems)
-    
-    recommendation_cache[handle] = {
-        "recommendedProblems": candidates
-    }
-    
-    return recommendation_cache[handle]
+    return candidates[:200]
