@@ -5,8 +5,15 @@ import { API_BASE_URL, USER_HANDLE } from "../constants/config";
 
 function Problems() {
     const [problems, setProblems] = useState<Problem[]>([]);
+    const [currentPage, setCurrentPage] = useState(1);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+
+    const problemsPerPage = 10;
+    const lastProblemIndex = currentPage * problemsPerPage;
+    const firstProblemIndex = lastProblemIndex - problemsPerPage;
+    const currentProblems = problems.slice(firstProblemIndex, lastProblemIndex);
+    const totalPages = Math.ceil(problems.length / problemsPerPage)
 
     useEffect(() => {
         const fetchRecommendedProblems = async () => {
@@ -21,6 +28,8 @@ function Problems() {
 
                 const data = await res.json();
                 setProblems(data.recommendedProblems);
+
+                setCurrentPage(1);
             } catch (err) {
                 setError("Could not load recommended problems");
             } finally {
@@ -54,7 +63,7 @@ function Problems() {
 
             <div className="space-y-4">
                 {
-                    problems.map((problem) => (
+                    currentProblems.map((problem) => (
                         <div
                             key={`${problem.contestId}-${problem.index}`}
                             className="bg-gray-800 p-4 rounded-lg border border-gray-700"
@@ -89,6 +98,26 @@ function Problems() {
                         </div>
                     ))
                 }
+            </div>
+
+            <div className="flex justify-center items-center gap-4 mt-6">
+                <button
+                    onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="px-4 py-2 bg-gray-600 text-white rounded disabled:opacity-50"
+                >
+                    Prev
+                </button>
+                <span className="text-white">
+                    Page: {currentPage} of {totalPages}
+                </span>
+                <button
+                    onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="px-4 py-2 bg-gray-600 text-white rounded disabled:opacity-50"
+                >
+                    Next
+                </button>
             </div>
         </div>
     )
