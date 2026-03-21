@@ -22,7 +22,7 @@ def get_recommended_problems(handle: str):
     # Logic
     
     # 1) get list of attempted tags, solved tags, solved problems and attempted problems from submissions list
-    submission_data = parse_submission(submissions)
+    submission_data = parse_submission(submissions, rating)
     attempted_tags = submission_data["attempted_tags"]
     solved_tags = submission_data["solved_tags"]
     solved_problems = submission_data["solved_problems"]
@@ -31,9 +31,10 @@ def get_recommended_problems(handle: str):
     # 2) get weakness score associated with each tag        
     tag_weakness = get_tag_weakness(all_tags, attempted_tags, solved_tags)
     
-    # 3) Get list of unsolved problems sorted according to relevance
+    # 3) get list of unsolved problems sorted according to relevance
     candidates = get_candidates(rating, all_problems, solved_problems, tag_weakness, attempted_problems)
     
+    # 4) return the candidates list after caching
     recommendation_cache[handle] = {
         "recommendedProblems": candidates
     }
