@@ -1,5 +1,6 @@
 from collections import defaultdict
 from math import sqrt, exp, log
+from random import betavariate
 
 def parse_submission(submissions, user_rating):
     attempted_tags = defaultdict(int)
@@ -19,7 +20,7 @@ def parse_submission(submissions, user_rating):
         problem_key = (contest_id, index)
         attempted_problems.add(problem_key)
         
-        wt = exp((prob_rating - user_rating) / 300)
+        wt = exp((prob_rating - user_rating) / (user_rating - 300))
         
         tags = prob.get("tags", [])
         for tag in tags:
@@ -37,6 +38,7 @@ def parse_submission(submissions, user_rating):
         "attempted_problems": attempted_problems
     }
 
+# still need to look into this function
 def get_tag_weakness(all_tags, attempted_tags, solved_tags):
     tag_weakness = {}
     
@@ -46,16 +48,20 @@ def get_tag_weakness(all_tags, attempted_tags, solved_tags):
     if total_attempts == 0:
         return {tag: 0.5 for tag in all_tags} # TODO: change it to 1 / global_success_rate[tag]
     
-    c = 10 
-    k = c / sqrt(total_attempts + 1)
-    p = 0.5
-    
+    # Using thompson sampling for calculating weakness
     for tag in all_tags:
         attempted = attempted_tags[tag]
         solved = solved_tags[tag]
         
-        success_rate = (solved + k * p) / (attempted + k)
-        weakness = 1 - success_rate
+        alpha = solved + 1
+        beta = attempted - solved + 1
+        
+        mean = alpha / (alpha + beta)
+        variance = (alpha * beta) / ((alpha + beta)**2 * (alpha + beta + 1))
+        
+        exploration = 0.5 * sqrt(variance)
+        
+        weakness = (1 - mean) + exploration
         
         tag_weakness[tag] = weakness
     
@@ -96,7 +102,7 @@ def get_candidates(rating, all_problems, solved_problems, tag_weakness, attempte
             diff = prob_rating - rating
             
             avg_weakness = sum(weaknesses) / len(weaknesses)
-            rms_weakness = sqrt(sum(w*w for w in weaknesses) / len(weaknesses))
+            max_weakness = max(weaknesses)
             unseen_bonus = 1 if problem_key not in attempted_problems else 0 # TODO: change it to 1 - exp(-days_since_attempt)
             rating_bonus = exp(-(diff ** 2) / (2 * (300 ** 2)))
             if (diff < 0): rating_bonus *= 0.8
@@ -104,12 +110,12 @@ def get_candidates(rating, all_problems, solved_problems, tag_weakness, attempte
              
             # parameters which are used for score generation are as follows
             # 1. average weakness: to get average weakness of all tags in the problems and also to make sure that we get balanced training
-            # 2. rms weakness: to make sure that very weak tags get slight nudge in the scoring
+            # 2. max weakness: to catch outliers so that tags which are extremely weak get some nudge
             # 3. len(tags): to make sure that more the no of tags the more weightage it gets basically to make sure that more diverse problems get more weightage
             # 4. unseen_bonus: to give bonus to unseen problems it ensures that never seen problems are recommended first
             # 5. rating_bonus: to make sure that problems closer to the rating ranger are preferred first
             
-            score = 0.5 * avg_weakness + 0.2 * rms_weakness + 0.1 * tag_score + 0.05 * unseen_bonus + 0.15 * rating_bonus
+            score = 0.5 * avg_weakness + 0.2 * max_weakness + 0.1 * tag_score + 0.05 * unseen_bonus + 0.15 * rating_bonus
             
             candidates.append({
                 "contestId": contest_id,
