@@ -48,22 +48,28 @@ def get_tag_weakness(all_tags, attempted_tags, solved_tags):
     if total_attempts == 0:
         return {tag: 0.5 for tag in all_tags} # TODO: change it to 1 / global_success_rate[tag]
     
-    # Using thompson sampling for calculating weakness
+    k = 20 / sqrt(total_attempts + 1)
+    c = 0.1
+    p = 0.5
+    
+    # Using Upper Confidence Bound (UCB) sampling for now
     for tag in all_tags:
         attempted = attempted_tags[tag]
         solved = solved_tags[tag]
         
-        alpha = solved + 1
-        beta = attempted - solved + 1
+        # Bayesian smoothing
+        success = (solved + k * p) / (attempted + k)
+        # Exploration like UCB for adding uncertainity to system
+        exploration = c * sqrt(log(total_attempts + 1) / (attempted + 1))
         
-        mean = alpha / (alpha + beta)
-        variance = (alpha * beta) / ((alpha + beta)**2 * (alpha + beta + 1))
-        
-        exploration = 0.5 * sqrt(variance)
-        
-        weakness = (1 - mean) + exploration
+        weakness = (1 - success) + exploration
         
         tag_weakness[tag] = weakness
+    
+    # Normalize
+    max_w = max(tag_weakness.values())
+    for tag in tag_weakness:
+        tag_weakness[tag] /= max_w
     
     return tag_weakness
 
@@ -101,19 +107,20 @@ def get_candidates(rating, all_problems, solved_problems, tag_weakness, attempte
             
             diff = prob_rating - rating
             
-            avg_weakness = sum(weaknesses) / len(weaknesses)
-            max_weakness = max(weaknesses)
-            unseen_bonus = 1 if problem_key not in attempted_problems else 0 # TODO: change it to 1 - exp(-days_since_attempt)
-            rating_bonus = exp(-(diff ** 2) / (2 * (300 ** 2)))
-            if (diff < 0): rating_bonus *= 0.8
-            tag_score = log(1 + sum(weaknesses)) / log(2 + len(tags))
-             
             # parameters which are used for score generation are as follows
             # 1. average weakness: to get average weakness of all tags in the problems and also to make sure that we get balanced training
             # 2. max weakness: to catch outliers so that tags which are extremely weak get some nudge
             # 3. len(tags): to make sure that more the no of tags the more weightage it gets basically to make sure that more diverse problems get more weightage
             # 4. unseen_bonus: to give bonus to unseen problems it ensures that never seen problems are recommended first
             # 5. rating_bonus: to make sure that problems closer to the rating ranger are preferred first
+            
+            avg_weakness = sum(weaknesses) / len(weaknesses)
+            max_weakness = max(weaknesses)
+            unseen_bonus = 1 if problem_key not in attempted_problems else 0 # TODO: change it to 1 - exp(-days_since_attempt)
+            rating_bonus = exp(-(diff ** 2) / (2 * (300 ** 2)))
+            tag_score = log(sqrt(len(tags)) + 1)
+            
+            if (diff < 0): rating_bonus *= 0.8
             
             score = 0.5 * avg_weakness + 0.2 * max_weakness + 0.1 * tag_score + 0.05 * unseen_bonus + 0.15 * rating_bonus
             
