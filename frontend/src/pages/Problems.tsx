@@ -6,6 +6,8 @@ import { API_BASE_URL, USER_HANDLE } from "../constants/config";
 function Problems() {
     const [problems, setProblems] = useState<Problem[]>([]);
     const [currentPage, setCurrentPage] = useState(1);
+    const [showRating, setShowRating] = useState(true);
+    const [showTags, setShowTags] = useState(true);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
 
@@ -13,7 +15,7 @@ function Problems() {
     const lastProblemIndex = currentPage * problemsPerPage;
     const firstProblemIndex = lastProblemIndex - problemsPerPage;
     const currentProblems = problems.slice(firstProblemIndex, lastProblemIndex);
-    const totalPages = Math.ceil(problems.length / problemsPerPage)
+    const totalPages = Math.ceil(problems.length / problemsPerPage);
 
     useEffect(() => {
         const fetchRecommendedProblems = async () => {
@@ -61,6 +63,27 @@ function Problems() {
                 Recommended Problems
             </h2>
 
+            <div className="flex justify-center gap-6 mb-6">
+                <label className="flex items-center gap-2 text-white cursor-pointer">
+                    <input
+                        type="checkbox"
+                        checked={showRating}
+                        onChange={() => setShowRating(prev => !prev)}
+                        className="accent-blue-500"
+                    />
+                    Show Rating
+                </label>
+                <label className="flex items-center gap-2 text-white cursor-pointer">
+                    <input
+                        type="checkbox"
+                        checked={showTags}
+                        onChange={() => setShowTags(prev => !prev)}
+                        className="accent-blue-500"
+                    />
+                    Show Tags
+                </label>
+            </div>
+
             <div className="space-y-4">
                 {
                     currentProblems.map((problem) => (
@@ -78,21 +101,23 @@ function Problems() {
                                     >
                                         {problem.name}
                                     </a>
-                                    <div className="text-sm text-gray-300 mt-1">
-                                        Rating: {problem.rating}
-                                    </div>
-                                    <div className="flex flex-wrap gap-2 mt-2">
-                                        {
-                                            problem.tags.map((tag) => (
+                                    {showRating && (
+                                        <div className="text-sm text-gray-300 mt-1">
+                                            Rating: {problem.rating}
+                                        </div>
+                                    )}
+                                    {showTags && (
+                                        <div className="flex flex-wrap gap-2 mt-2">
+                                            {problem.tags.map((tag) => (
                                                 <span
                                                     key={tag}
                                                     className="px-2 py-1 text-xs rounded-full bg-blue-600 text-white"
                                                 >
                                                     {tag}
                                                 </span>
-                                            ))
-                                        }
-                                    </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>

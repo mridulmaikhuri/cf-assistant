@@ -153,7 +153,7 @@ def get_candidates(rating, all_problems, solved_problems, tag_weakness, attempte
                 common = len(set(candidate["tags"]) & set(sel["tags"]))
                 penalty += log(1 + common)
                 
-            score = candidate["score"] - penalty * 0.01
+            score = candidate["score"] - penalty * 0.02
             
             if score > best_score:
                 best_score = score
