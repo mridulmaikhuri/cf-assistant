@@ -1,6 +1,6 @@
 from collections import defaultdict
 from math import sqrt, exp, log
-from random import betavariate
+import random
 
 def parse_submission(submissions, user_rating):
     attempted_tags = defaultdict(int)
@@ -120,7 +120,8 @@ def get_candidates(rating, all_problems, solved_problems, tag_weakness, attempte
             rating_bonus = exp(-(diff ** 2) / (2 * (300 ** 2)))
             tag_score = log(sqrt(len(tags)) + 1)
             
-            if (diff < 0): rating_bonus *= 0.8
+            # makes sure higher rated problems get more weightage
+            if (diff < 0): rating_bonus *= 0.9
             
             score = 0.5 * avg_weakness + 0.2 * max_weakness + 0.1 * tag_score + 0.05 * unseen_bonus + 0.15 * rating_bonus
             
@@ -137,30 +138,42 @@ def get_candidates(rating, all_problems, solved_problems, tag_weakness, attempte
     candidates.sort(key=lambda x : (-x["score"], abs(x["rating"] - rating)))
     candidates = candidates[:500]
     
-    selected = []
+    for candidate in candidates:
+        candidate['tags'] = set(candidate['tags'])
     
-    for i in range(min(200, len(candidates))):
-        best_candidate = None
-        best_score = -1e9
+    # makes sure there is diversity in tags
+    selected = []
+    picked = set()
+    
+    for _ in range(min(200, len(candidates))):
+        scores = []
+        indices = []
         
-        for candidate in candidates:
-            if "picked" in candidate:
+        for i in range(len(candidates)):
+            candidate = candidates[i]
+            if i in picked:
                 continue
             
             penalty = 0
             
+            # calculate similarity score and add it to penalty
             for sel in selected:
-                common = len(set(candidate["tags"]) & set(sel["tags"]))
+                common = len(candidate["tags"] & sel["tags"])
                 penalty += log(1 + common)
                 
             score = candidate["score"] - penalty * 0.02
             
-            if score > best_score:
-                best_score = score
-                best_candidate = candidate
+            scores.append(score)
+            indices.append(i)
         
-        best_candidate["score"] = best_score
-        best_candidate["picked"] = True
-        selected.append(best_candidate)
+        # softmax sampling
+        T = 0.1
+        total = sum(exp(s / T) for s in scores)
+        probs = [exp(s / T) / total for s in scores]
+        
+        # probabilistic selection
+        idx = random.choices(indices, weights=probs, k = 1)[0]
+        selected.append(candidates[idx])
+        picked.add(idx)
         
     return selected

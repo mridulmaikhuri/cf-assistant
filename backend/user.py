@@ -5,13 +5,9 @@ from recommender import get_candidates, get_tag_weakness, parse_submission
 from api import get_user, fetch_problemset_and_tags, fetch_user_submissions
 
 router = APIRouter()
-    
-recommendation_cache = TTLCache(maxsize=200, ttl=86400)
+   
 @router.get('/problems/{handle}')
 def get_recommended_problems(handle: str):
-    if handle in recommendation_cache:
-        return recommendation_cache[handle]
-    
     # Fetch necessary Info
     rating = get_user(handle).get("rating", 800)
     submissions = fetch_user_submissions(handle) 
@@ -35,8 +31,6 @@ def get_recommended_problems(handle: str):
     candidates = get_candidates(rating, all_problems, solved_problems, tag_weakness, attempted_problems)
     
     # 4) return the candidates list after caching
-    recommendation_cache[handle] = {
+    return {
         "recommendedProblems": candidates
     }
-    
-    return recommendation_cache[handle]
