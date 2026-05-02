@@ -1,4 +1,4 @@
-# 🎯 CF Assistant
+# 🎯 CF Recommender
 
 A randomized and adaptive codeforces problem recommendation system that helps competitive programmers discover problems tailored to their skill level and interests.
 
